@@ -345,8 +345,8 @@ There are two ways of handling the errors:
 1. The response returns only the errors which means the api completely throws the errors as a `SputnikError.responseError([ResponsePartialError])` meaning you will have to handle the casting yourself: 
 ```swift
 do {
-    let _ = try await requestMaker.makeRequest(operation: query
-} catch{
+    let _ = try await requestMaker.makeRequest(operation: query)
+} catch {
     guard let error = error as? SputnikError,
     case let .responseError(partialErrors) = error else { return }
     let defaultPartialErrors = partialErrors.compactMap { $0 as? DefaultPartialError }
