@@ -1,11 +1,11 @@
-## Itroducing Sputnik - A fast, easy to use GraphQL API client where you write the query in plain swift structs.
-### No script writing, no code generation, no complex code.
+# Itroducing Sputnik - An easy to use GraphQL API client where you write the query in plain swift structs
+## No script writing, no code generating, no complex code
 
-Sputnik allows you to write and execute complex GraphQL queries and mutations simply by writing them as structs in Swift. The idea is to write the struct as if you were writing a GraphQL query, select the exact data that you want to return and after executing the api request Sputnik automatically maps the response data into the same struct so you can use in your code. 
+Sputnik allows you to write and execute complex GraphQL queries and mutations simply by writing them as structs in Swift. The idea is to write the struct as if you were writing a GraphQL query, select the exact data that you want to return and after executing the api request Sputnik automatically maps the response data into the same struct so you can use it in your code. 
 
 There's no need to write additional code for this. All you have to do is use a couple of Macros on the selected struct and Sputnik automatically generates the code needed for mapping the data, value selection and more. 
 
-Of course since this uses Swift Macros this is sadly only supported on projects which have a minimum version of** iOS 17 **
+Of course since this uses Swift Macros this is sadly only supported on projects which have a minimum version of **iOS 17**
 
 As an example let's say we need to execute this query:
 
@@ -27,7 +27,7 @@ query findByType($type: MediaType, $userId: Int, $status: MediaListStatus) {
 }
 ```
 
-All you have to do for it to work is write this:
+All you have to do for it to work is write this code:
 ```swift
 import SputnikMacros
 
@@ -86,8 +86,8 @@ enum MediaListStatus: String {
 After that just create your API which conforms to `SputnikGraphQLAPI` that will contain the url endpoint and headers:
 ```swift
 struct AnimeAPI: SputnikGraphQLAPI {
-    var urlEndpoint: String = "https://graphql.anilist.co"
-    var headers: [String: String] = [:]
+    let urlEndpoint: String = "https://graphql.anilist.co"
+    let headers: [String: String] = [:]
 }
 ```
 
@@ -97,17 +97,20 @@ func getMedia() async throws -> AnimeQuery {
     let variables = AnimeQuery.Variables(type: .anime, userId: 12, status: .completed)
     let query = AnimeQuery(variables: variables)
     let api = AnimeAPI()
-    let requestMaker = SputnikRequestMaker(api: api
+    let requestMaker = SputnikRequestMaker(api: api)
     return try await requestMaker.makeRequest(operation: query)
 }
 ```
 
-Sputnik will then generate the query string using the data in the object, make the call and return a new instance of the same struct but with the data from the response automatically mapped.
+Sputnik will then generate the query string using the data in the object, make the call and return a new copy of the same struct but with the data from the response automatically mapped.
 
 But wait there's more. Let's say that you would like to execute the same query but now from the Media type to only get the description. There's no need to rewrite the whole query just without the type. All you have to do is use the `setSelections()` functions which the QuerySatelite macro automatically generates for each struct to specify exactly what you want to return from every type:
 ```swift
 query.mediaList.lists.select.entries.setSelections([.media])
 ```
+
+By default all the values are selected but by using `setSelections()` you can specify from each object exavtly what you want returned.
+
 ## Getting started
 ### - Query Macros
 Currently there are 3 macros for writing queries: 
@@ -115,7 +118,7 @@ Currently there are 3 macros for writing queries:
 - QueryMutation(name: String? = nil, variableMapping: VariableMapping = .automatic)
 - QuerySatelite(schemaTypeName: String? = nil)
 
-QueryOperation and QueryMutation should only be attached once at the first struct to indicate that we are initiating either a query or a mutation. The `name` parameter is just the name for the query or mutation used for debugging purposes. The `variablesMapping` is explained further down. As written in the query above, QuerySatelite **must be added in every child struct othewise the mapping and setting up of the variables won't work.** Also each child QuerySatelite struct has to be added inside of the QueryOperation or QueryMutation struct otherwise it won't again. Example:
+QueryOperation and QueryMutation should only be attached once at the primary struct to indicate that we are initiating either a query or a mutation. The `name` parameter is just the name for the query or mutation used for debugging purposes. The `variablesMapping` is explained further down. As written in the query above, QuerySatelite **must be added in every child struct othewise the mapping and setting up of the variables won't work.** Also each child QuerySatelite struct **has to be added nested inside of the QueryOperation or QueryMutation struct otherwise it won't work.** Example:
 ```swift
 @QueryOperation
 struct UserQuery {
@@ -131,7 +134,7 @@ struct User {
 
 **This will not work since the query satelite is defined outside the query's scope.**
 
-The parameter `schemaTypeName` is used for mapping the variables mainly to get the type name of the variable as defined in the API schema if the QuerySatelite is a variable object and the type name is different from the type name defined in the schema:
+The parameter `schemaTypeName` is used for mapping the variables mainly to get the type name of the variable as defined in the API schema **if the QuerySatelite is a variable object and the type name is different from the type name defined in the schema**:
 ```swift
 @QueryOperation
 struct UserQuery {
@@ -145,7 +148,7 @@ struct UserQuery {
 }
 ```
 
-In this example on the schema the type name is defined as "UserFilter" thus we also need to specify the schema type name here to match it. It can work without the parameter if both the type in the schema and the type in the satelite have the same name:
+In this example on the schema the type name is defined as "UserFilter" thus we also need to specify the schema type name here to match it. **It can work without this parameter if both the type in the schema and the type in the satelite have the same name**:
 ```swift
 @QueryOperation
 struct UserQuery {
@@ -159,7 +162,7 @@ struct UserQuery {
 }
 ```
 
-The macro then goes through all the structs, searches for the variables and creates a separate struct: `Variables` where the user, when initializing the query can set the required data for those same variables. QuerySatelite also generates an enum called `SelectedValues` and also an array where the developer can set the required values it they want to return:
+The macro then goes through all the structs, searches for the variables and creates a separate struct: `Variables` where the user, when initializing the query can set the required data for those same variables. QuerySatelite also generates an enum called `SelectedValues` and also an array where the developer can set the required values that they want to return:
 ```swift
 @QuerySatelite
 struct Character {
@@ -174,17 +177,18 @@ struct Character {
 
     // Macro generated code.
     enum SelectableValue: String, CaseIterable {
-     case id
-     case name
-     case species
-     case type
-     case gender
-     case created
-     case status
-     case origin
+        case id
+        case name
+        case species
+        case type
+        case gender
+        case created
+        case status
+        case origin
 
-    var __selectionName: String {
-        self.rawValue
+        var __selectionName: String {
+            self.rawValue
+        }
     }
 
     var __selectedValues: [SelectableValue] = [.id, .name, .species, .type, .gender, .created, .status, .origin]
@@ -203,11 +207,11 @@ We have 3 property wrappers designed to help us write the query:
 - Property
 - Argument (Should only be used when writing a query with manual variable mapping)
 
-Variable should be used when we want to declare a property as a variable. The `name` parameter can be used if in the query string we want the variable to have a different name than the name of the var itself.
+`@Variable` should be used when we want to declare a property as a variable. The `name` parameter can be used if in the query string we want the variable to have a different name than the name of the var itself.
 
-Property is optional and only should be used when we want in the query string the property to have a different name than the `name` of the var itself so it can match the name defined in the schema.
+`@Property` is optional and only should be used when we want in the query string the property to have a different name than the `name` of the var itself so it can match the name defined in the schema.
 
-Argument is used in a query with manual argument mapping if we want to define an argument manually without attaching a variable to it. But if we want to have a variable we can have that with the `variableKey`parameter.
+`@Argument` is used in a query with manual argument mapping if we want to define an argument manually without attaching a variable to it. But if we want to have a variable we can have that with the `variableKey`parameter.
 
 ### - QueryEnum
 The `QueryEnum`macro must be attached to every enum otherwise the mapping won't work.
@@ -219,16 +223,14 @@ Sputnik also supports scalar values alongside with mapping values that are expre
 struct DateScalar {}
 ```
 
-In this code`expressibleBy ` tells Sputnik by which values can this scalar be expressed, `valueType` is the actual type of the value generated within the scalar and `transformer` provides a class that has to initialize the object from a JSON value to the `valueType`and also serialize it for when we make a request. Here is what the macro generates:
+In this code `expressibleBy` tells Sputnik by which literals can this scalar be expressed as, `valueType` is the actual type of the value generated within the scalar and `transformer` provides a class that has to initialize the object from a JSON value to the `valueType` and also serialize it back to a JSON value for when we make a request. Here is what the macro generates:
 ```swift
 struct DateScalar {
     public var value: Date?
     let transformer = DateScalarTransformer.self
 }
-extension DateScalar: Dependencies.ScalarType,
-ExpressibleByStringLiteral,
-ExpressibleByIntegerLiteral,
-ExpressibleByFloatLiteral {
+
+extension DateScalar: Dependencies.ScalarType, ExpressibleByStringLiteral, ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral {
     public mutating func mapData(_ data: Any) {
         if let stringValue = data as? String {
             value = transformer.initialize(stringValue: stringValue)
@@ -259,7 +261,7 @@ ExpressibleByFloatLiteral {
 }
 ```
 
-Depending on the `expressibleBy` the scalar will inherit from the `ExpressibleByStringLiteral`, `ExpressibleByIntegerLiteral`, `ExpressibleByDoubleLiteral` or `ExpressibleByBooleanLiteral` so that the scalar can be written like `let dateScalar: DateScalar = "2025-12-21"`Sputnik then uses the provided transformer to initialize the value from the literal. By default sputnik has it's own tranformer: `DefaultScalarTransformer` which just tries to cast the value to the object. This is a very basic logic and it's reccomended to write a custom transofrmer that will have it's own transforming algorithm, like so:
+Depending on the `expressibleBy` values the scalar will inherit from the `ExpressibleByStringLiteral`, `ExpressibleByIntegerLiteral`, `ExpressibleByDoubleLiteral` or `ExpressibleByBooleanLiteral` so that the scalar can be written like this example `let dateScalar: DateScalar = "2025-12-21"`. Sputnik then uses the provided transformer to initialize the value from the literal. By default sputnik has it's own tranformer: `DefaultScalarTransformer` which just tries to cast the value literal to the object. This is a very basic logic and it's reccomended to write a custom transofrmer that will have it's own transforming algorithm, like so:
 ```swift
 class DateScalarTransformer: ScalarTransformer {
     typealias T = Date
@@ -340,7 +342,7 @@ public struct DefaultPartialError: ResponsePartialError {
 ```
 
 There are two ways of handling the errors:
-1. The response returns only the errors which means the api completely throws the errors as a `SputnikError.responseError(l[ResponsePartialError])` which means you will have to handle the casting yourself: 
+1. The response returns only the errors which means the api completely throws the errors as a `SputnikError.responseError([ResponsePartialError])` meaning you will have to handle the casting yourself: 
 ```swift
 do {
     let _ = try await requestMaker.makeRequest(operation: query
@@ -357,7 +359,7 @@ let partialErrors = response.partialError
 let defaultPartialErrors = partialErrors.compactMap { $0 as? DefaultPartialError }
 ```
 
-This decision to manually cast it was made because there are some APIs which do not return the errors in the `DefaultPartialError` format so for them a special struct has to be made and also use a special transformer to convert them to partial errors. As an example let's take a look at this custom partial error along with the custom transformers:
+This decision to manually cast it was made because there are some APIs which do not return the errors in the `DefaultPartialError` format so for them a special struct has to be made and also use a special transformer to convert them to partial error objects. As an example let's take a look at this custom partial error along with the custom transformers:
 
 ```swift
 public struct MockParitalError: ResponsePartialError {
@@ -404,9 +406,9 @@ class MockErrorTransformer: ResponseErrorTransformer {
 Then Inside your API you will need to put a refference to that transformer type:
 ```swift
 struct AnimeAPI: SputnikGraphQLAPI {
-    var urlEndpoint: String = "https://graphql.anilist.co"
-    var headers: [String: String] = [:]
-    var responseErrorTransformer: any ResponseErrorTransformer.Type = MockErrorTransformer.self
+    let urlEndpoint: String = "https://graphql.anilist.co"
+    let headers: [String: String] = [:]
+    let responseErrorTransformer: any ResponseErrorTransformer.Type = MockErrorTransformer.self
 }
 ```
 
@@ -422,7 +424,9 @@ func configure() {
 ```
 
 It also supports mocking. If you have a mock environment and want to setup some offline responses you can do so by using `addMockResponse()`:
-`SputnikAPIConfiguration.addMockResponse(for: RickAndMortyQuery.self, responseString: Constans.RickAndMortyAPIResponse)`
+```swift
+SputnikAPIConfiguration.addMockResponse(for: RickAndMortyQuery.self, responseString: Constans.RickAndMortyAPIResponse)
+```
 
 Curretntly for global configurations you can only have **one response per query type**. For testing setting global mock responses is not reccomended since you might want to test multiple response for the same query type which might introduce data races and flaky tests. Thus you can create a custom configuration and use that when initializing the request maker:
 ```swift
@@ -432,7 +436,7 @@ let query = RickAndMortyQuery(variables: variables)
 let api = RickAndMortyAPI()
 let requestMaker = SputnikRequestMaker(api: api, configuration: customConfiguration)
 ```
-Sputnik also has a bunch of debug options which you can setup either globaly for every request or add the configuration specifically per request when initializing the request maker. Currently the options are a bit limited, but for debugging especially when the response returns an error and you don't know why, they get the job done:
+Sputnik also has a couple of debug options which can be set up either globaly for every request or add the configuration specifically per request when initializing the request maker. Currently the options are a bit limited, but for debugging, especially when the response returns an error and you don't know why, they get the job done:
 ```swift
 public struct DebugConfiguration {
     let logOperation: Bool
@@ -440,3 +444,174 @@ public struct DebugConfiguration {
     let logResponse: Bool
 }
 ```
+
+### - Manual Variable Mapping
+As mentioned above, the `@QueryOperation` macro has a parameter `variableMapping` which is an enum:
+```swift
+public enum VariableMapping: String {
+    case automatic
+    case manual
+}
+```
+
+By default this is always set to `.automatic`. Setting it to `.manual` means that you will have to define the arguments yourself, define the variables yourself in the main operation and map each argument to the variable using the `variableKey` parameter:
+
+```swift
+import SputnikMacros
+
+@QueryOperation(name: "Characters", variableMapping: .manual)
+struct RickAndMortyManualQuery {
+    @Variable var page: Int
+    @Variable var filter: FilterCharacter?
+    @Variable var episodeId: ID
+    @Variable var locationIds: [ID]
+
+    var characters: Characters
+    var episode: Episode
+    @Property(name: "locationsByIds")
+    var locations: [Location]
+}
+
+@QuerySatelite
+struct FilterCharacter {
+    var name: String
+    var species: String
+}
+
+@QuerySatelite
+struct Info {
+    var count: Int
+    var pages: Int
+    var next: Int?
+    var prev: Int?
+}
+
+@QuerySatelite
+struct Episode {
+    @Argument(variableKey: "episodeId")
+    var id: ID
+    @Property(name: "id")
+    var episodeId: String
+    var name: String
+    @Property(name: "air_date")
+    var airDate: String
+    var episode: String
+    var created: String
+    var characters: [Character]
+}
+
+@QuerySatelite
+struct Location {
+    @Argument(variableKey: "locationIds")
+    var ids: [ID]
+    var id: ID
+    var name: String
+    var type: String
+    var dimension: String
+    var residents: [Character]
+}
+
+@QuerySatelite
+struct Characters {
+    var info: Info
+    var results: [Character]
+    @Argument(variableKey: "page")
+    var page: Int?
+    @Argument(variableKey: "filter")
+    var filter: FilterCharacter?
+}
+
+@QuerySatelite
+struct Character {
+    var id: ID
+    var name: String
+    var species: String
+    var type: String
+    var gender: String
+    var created: String
+    var status: Status
+}
+```
+
+It also should be mentioned that if you go with this approach you don't need to nest the `@QuerySatelite` structs inside the operation, however this does risk a circular refferences error. You can also use this approach without define any variables and setting the arguments manually yourself whe instantiating the object:
+
+```swift
+import SputnikMacros
+
+@QueryOperation(name: "Characters", variableMapping: .manual)
+struct RickAndMortyManualQuery {
+    var characters: Characters
+    var episode: Episode
+    @Property(name: "locationsByIds")
+    var locations: [Location]
+}
+
+@QuerySatelite
+struct FilterCharacter {
+    var name: String
+    var species: String
+}
+
+@QuerySatelite
+struct Info {
+    var count: Int
+    var pages: Int
+    var next: Int?
+    var prev: Int?
+}
+
+@QuerySatelite
+struct Episode {
+    @Argument
+    var id: ID
+    @Property(name: "id")
+    var episodeId: String
+    var name: String
+    @Property(name: "air_date")
+    var airDate: String
+    var episode: String
+    var created: String
+    var characters: [Character]
+}
+
+@QuerySatelite
+struct Location {
+    @Argument
+    var ids: [ID]
+    var id: ID
+    var name: String
+    var type: String
+    var dimension: String
+    var residents: [Character]
+}
+
+@QuerySatelite
+struct Characters {
+    var info: Info
+    var results: [Character]
+    @Argument
+    var page: Int?
+    @Argument
+    var filter: FilterCharacter?
+}
+
+@QuerySatelite
+struct Character {
+    var id: ID
+    var name: String
+    var species: String
+    var type: String
+    var gender: String
+    var created: String
+    var status: Status
+}
+
+let filter = FilterCharacterArguments(name: "Rick", species: "Human")
+var query = RIckAndMortyManualQueryNoVariables()
+query.episode.id = 23
+query.locations[0].ids = [12, 25]
+query.characters.page = 1
+query.characters.filter = filter
+```
+
+**Please note that this approach is not that very well tested and is not reccomended for use. I would always reccomend to use the first approach unless there are some small edge cases in your api where you can't use automatic variables and you absolutely have to use this method.**
